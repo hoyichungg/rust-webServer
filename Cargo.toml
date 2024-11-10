@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+diesel = "2.1"
+diesel-async = { version = "0.4", features = ["postgres"] }
+chrono = "0.4"
