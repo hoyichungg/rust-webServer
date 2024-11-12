@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-diesel = "2.1"
-diesel-async = { version = "0.4", features = ["postgres"] }
+diesel = {version = "2.2.4", features = ["chrono"]}
+diesel-async = { version = "0.5.1", features = ["postgres"] }
 chrono = "0.4"
