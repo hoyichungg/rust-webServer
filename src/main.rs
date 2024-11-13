@@ -1,20 +1,27 @@
-use rocket_db_pools::{Connection, Database};
-
 mod models;
 mod repositories;
+mod rocket_routes;
 mod schema;
+
+use rocket_db_pools::Database;
 
 #[derive(Database)]
 #[database("postgres")]
 struct DbConn(rocket_db_pools::diesel::PgPool);
 
-#[rocket::get("/rustaceans")]
-fn get_rustaceans(db: Connection<DbConn>) {}
-
 #[rocket::main]
 async fn main() {
     let _ = rocket::build()
-        .mount("/", rocket::routes![get_rustaceans])
+        .mount(
+            "/",
+            rocket::routes![
+                rocket_routes::rustaceans::get_rustaceans,
+                rocket_routes::rustaceans::view_rustaceans,
+                rocket_routes::rustaceans::create_rustaceans,
+                rocket_routes::rustaceans::update_rustaceans,
+                rocket_routes::rustaceans::delete_rustaceans,
+            ],
+        )
         .attach(DbConn::init())
         .launch()
         .await;
