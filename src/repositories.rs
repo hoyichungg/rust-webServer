@@ -46,9 +46,9 @@ impl RustaceanRepository {
     }
 }
 
-pub struct Craterepository;
+pub struct CrateRepository;
 
-impl Craterepository {
+impl CrateRepository {
     pub async fn find(c: &mut AsyncPgConnection, id: i32) -> QueryResult<Crate> {
         crates::table.find(id).get_result(c).await
     }
