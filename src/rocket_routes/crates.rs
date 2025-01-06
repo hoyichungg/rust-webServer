@@ -1,11 +1,10 @@
 use crate::models::{Crate, NewCrate};
 use crate::repositories::CrateRepository;
+use crate::rocket_routes::DbConn;
 use rocket::http::Status;
 use rocket::response::status::{Custom, NoContent};
 use rocket::serde::json::{json, Json, Value};
 use rocket_db_pools::Connection;
-
-use crate::DbConn;
 
 #[rocket::get("/crates")]
 pub async fn get_crates(mut db: Connection<DbConn>) -> Result<Value, Custom<Value>> {
@@ -31,7 +30,13 @@ pub async fn create_crate(
     CrateRepository::create(&mut db, new_crate.into_inner())
         .await
         .map(|a_crate| Custom(Status::Created, json!(a_crate)))
-        .map_err(|_| Custom(Status::InternalServerError, json!("Error")))
+        .map_err(|err| {
+            let error_message = format!("Database error: {}", err); // 根據實際錯誤來改寫
+            Custom(
+                Status::InternalServerError,
+                json!({ "error": error_message }),
+            )
+        })
 }
 
 #[rocket::put("/crates/<id>", format = "json", data = "<a_crate>")]

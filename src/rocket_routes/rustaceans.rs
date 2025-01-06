@@ -1,11 +1,10 @@
 use crate::models::{NewRustacean, Rustacean};
 use crate::repositories::RustaceanRepository;
+use crate::rocket_routes::DbConn;
 use rocket::http::Status;
 use rocket::response::status::{Custom, NoContent};
 use rocket::serde::json::{json, Json, Value};
 use rocket_db_pools::Connection;
-
-use crate::DbConn;
 
 #[rocket::get("/rustaceans")]
 pub async fn get_rustaceans(mut db: Connection<DbConn>) -> Result<Value, Custom<Value>> {
