@@ -1605,6 +1605,7 @@ dependencies = [
  "rocket",
  "rocket_db_pools",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
