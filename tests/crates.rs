@@ -110,11 +110,11 @@ fn test_update_crate() {
     let response = client
         .put(format!("{}/crates/{}", common::APP_HOST, a_crate["id"]))
         .json(&json!({
-          "code": "lukeee",
-          "name":"Lukeee ho",
-          "version":"0.2",
-          "description": "lukeee crate description",
-          "rustacean_id": rustacean["id"],
+            "code": "lukeee",
+            "name":"Lukeee ho",
+            "version":"0.2",
+            "description": "lukeee crate description",
+            "rustacean_id": rustacean["id"],
         }))
         .send()
         .unwrap();
@@ -124,13 +124,42 @@ fn test_update_crate() {
     assert_eq!(
         a_crate,
         json!({
-          "id":a_crate["id"],
-          "code": "lukeee",
-          "name":"Lukeee ho",
-          "version":"0.2",
-          "description": "lukeee crate description",
-          "rustacean_id": rustacean["id"],
-          "created_at": a_crate["created_at"],
+            "id":a_crate["id"],
+            "code": "lukeee",
+            "name":"Lukeee ho",
+            "version":"0.2",
+            "description": "lukeee crate description",
+            "rustacean_id": rustacean["id"],
+            "created_at": a_crate["created_at"],
+        })
+    );
+
+    // * Test author-switching for a crate and a very long description.
+    let rustacean2 = common::create_test_rustacean(&client);
+    let response = client
+        .put(format!("{}/crates/{}", common::APP_HOST, a_crate["id"]))
+        .json(&json!({
+            "code": "lukeee",
+            "name":"Lukeee ho",
+            "version":"0.2",
+            "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", 
+            "rustacean_id": rustacean2["id"],
+        }))
+        .send()
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let a_crate: Value = response.json().unwrap();
+    assert_eq!(
+        a_crate,
+        json!({
+            "id":a_crate["id"],
+            "code": "lukeee",
+            "name":"Lukeee ho",
+            "version":"0.2",
+            "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+            "rustacean_id": rustacean2["id"],
+            "created_at": a_crate["created_at"],
         })
     );
 
