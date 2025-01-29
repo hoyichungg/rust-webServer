@@ -1,5 +1,6 @@
 [package]
 name = "rust-webServer"
+default-run = "server"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,6 +12,7 @@ diesel-async = { version = "0.4", features = ["postgres"] }
 serde = "1.0"
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+clap = "4.4"
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json", "blocking"] }
