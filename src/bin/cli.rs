@@ -2,7 +2,8 @@ use clap::{Arg, Command};
 
 extern crate rust_webServer;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let matches = Command::new("rust_webServer")
         .about("rust_webServer commands")
         .arg_required_else_help(true)
@@ -35,9 +36,25 @@ fn main() {
 
     match matches.subcommand() {
         Some(("users", sub_matches)) => match sub_matches.subcommand() {
-            Some(("create", _)) => {}
-            Some(("list", _)) => {}
-            Some(("delete", _)) => {}
+            Some(("create", sub_matches)) => rust_webServer::commands::create_user(
+                sub_matches
+                    .get_one::<String>("username")
+                    .unwrap()
+                    .to_owned(),
+                sub_matches
+                    .get_one::<String>("password")
+                    .unwrap()
+                    .to_owned(),
+                sub_matches
+                    .get_many::<String>("roles")
+                    .unwrap()
+                    .map(|v| v.to_owned())
+                    .collect(),
+            ).await,
+            Some(("list", _)) => rust_webServer::commands::list_users().await,
+            Some(("delete", _)) => rust_webServer::commands::delete_user(
+                sub_matches.get_one::<i32>("id").unwrap().to_owned(),
+            ).await,
             _ => {}
         },
         _ => {}

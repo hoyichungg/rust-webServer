@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+tokio = "1"
 rocket = { version = "0.5", features = ["json"] }
 rocket_db_pools = { version = "0.1", features = ["diesel_postgres"] }
 diesel = { version = "2.1", features = ["chrono"] }

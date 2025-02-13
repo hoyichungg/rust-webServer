@@ -81,3 +81,25 @@ impl CrateRepository {
         diesel::delete(crates::table.find(id)).execute(c).await
     }
 }
+
+pub struct UserRepository;
+
+impl UserRepository {
+    pub async fn create(c: &mut AsyncPgConnection, new_user: NewUser) -> QueryResult<User> {
+        diesel::insert_into(users::table)
+            .values(new_user)
+            .get_result(c)
+            .await
+    }
+}
+
+pub struct RoleRepository;
+
+impl RoleRepository {
+    pub async fn create(c: &mut AsyncPgConnection, new_role: NewRole) -> QueryResult<Role> {
+        diesel::insert_into(roles::table)
+            .values(new_role)
+            .get_result(c)
+            .await
+    }
+}
