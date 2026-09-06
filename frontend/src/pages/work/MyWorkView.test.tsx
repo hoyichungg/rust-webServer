@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMockApiClient } from "../../test/mockApiClient";
 import { renderWithProviders } from "../../test/render";
@@ -8,11 +8,24 @@ import type { MyWorkResponse, WorkCard } from "../../types/api";
 import { MyWorkView } from "./MyWorkView";
 
 describe("MyWorkView", () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     window.history.replaceState(null, "", "/#my-work");
   });
 
-  it("loads the URL filters and renders actionable assignment context", async () => {
+  it.each([
+    ["zh-TW", "Asia/Taipei"],
+    ["en-US", "UTC"],
+    ["en-GB", "America/Los_Angeles"]
+  ])("loads the URL filters and renders actionable assignment context (%s, %s)", async (locale, timeZone) => {
+    const dateFormatter = new Intl.DateTimeFormat(locale, {
+      dateStyle: "short",
+      timeStyle: "medium",
+      timeZone
+    });
+    vi.spyOn(Date.prototype, "toLocaleString").mockImplementation(function (this: Date) {
+      return dateFormatter.format(this);
+    });
     const path =
       "/me/work-cards?status=blocked&due=overdue&project=Portal&work_item_type=Bug" +
       "&source=azure-devops&sort=attention&page=1&page_size=25";
@@ -39,7 +52,11 @@ describe("MyWorkView", () => {
     );
     expect(screen.getByText("Portal · Bug · azure-devops")).toBeVisible();
     expect(screen.getByText("overdue")).toBeVisible();
-    expect(screen.getByText(/^Source updated 2026/)).toBeVisible();
+    // Verify the source timestamp (08:30), not the portal update (08:31),
+    // without assuming year-first dates or a particular locale's whitespace.
+    const sourceUpdated = dateFormatter.format(new Date("2026-07-11T08:30:00Z"));
+    const expectedSourceUpdated = `Source updated ${sourceUpdated}`.replace(/\s+/g, " ");
+    expect(screen.getByText((text) => text === expectedSourceUpdated)).toBeVisible();
     expect(screen.getByRole("link", { name: "External card" })).toHaveAttribute(
       "href",
       "https://dev.azure.test/workitems/42"
