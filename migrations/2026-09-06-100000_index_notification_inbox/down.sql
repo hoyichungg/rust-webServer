@@ -1,0 +1,2 @@
+DROP INDEX notifications_inbox_source_updated_id_idx;
+DROP INDEX notifications_inbox_updated_id_idx;

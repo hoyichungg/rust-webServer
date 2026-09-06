@@ -423,6 +423,64 @@ export function CatalogView({ client, user }: { client: ApiClient; user: MeRespo
           />
 
           <Stack gap="lg">
+            <Grid>
+              <Grid.Col span={{ base: 12, xl: 7 }}>
+                <DataPanel
+                  title="Services"
+                  actions={
+                    <Button
+                      leftSection={<IconPlus size={16} />}
+                      size="compact-sm"
+                      disabled={!canManageOwnedRecords}
+                      onClick={() => setDialog({ type: "service" })}
+                    >
+                      New service
+                    </Button>
+                  }
+                >
+                  <DataTable
+                    rows={catalog.services}
+                    searchable label="services"
+                    columns={[
+                      ["name", "Service"],
+                      ["maintainer_id", "Maintainer", MaintainerCell],
+                      ["health_status", "Health", StatusBadge],
+                      ["lifecycle_status", "Lifecycle", StatusBadge],
+                      ["source", "Source", SourceCell],
+                      ["_actions", "Actions", ServiceActionCell]
+                    ]}
+                  />
+                </DataPanel>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, xl: 5 }}>
+                <DataPanel
+                  title="Packages"
+                  actions={
+                    <Button
+                      leftSection={<IconPlus size={16} />}
+                      size="compact-sm"
+                      disabled={!canManageOwnedRecords}
+                      onClick={() => setDialog({ type: "package" })}
+                    >
+                      New package
+                    </Button>
+                  }
+                >
+                  <DataTable
+                    rows={catalog.packages}
+                    searchable label="packages"
+                    columns={[
+                      ["name", "Package"],
+                      ["maintainer_id", "Maintainer", MaintainerCell],
+                      ["version", "Version"],
+                      ["status", "Status", StatusBadge],
+                      ["repository_url", "Repo", LinkCell],
+                      ["_actions", "Actions", PackageActionCell]
+                    ]}
+                  />
+                </DataPanel>
+              </Grid.Col>
+            </Grid>
             <DataPanel
               title="Maintainers"
               actions={
@@ -439,6 +497,7 @@ export function CatalogView({ client, user }: { client: ApiClient; user: MeRespo
             >
               <DataTable
                 rows={catalog.maintainers}
+                searchable label="teams"
                 columns={[
                   ["display_name", "Maintainer"],
                   ["email", "Email"],
@@ -496,62 +555,7 @@ export function CatalogView({ client, user }: { client: ApiClient; user: MeRespo
               </DataPanel>
             )}
 
-            <Grid>
-              <Grid.Col span={{ base: 12, xl: 7 }}>
-                <DataPanel
-                  title="Services"
-                  actions={
-                    <Button
-                      leftSection={<IconPlus size={16} />}
-                      size="compact-sm"
-                      disabled={!canManageOwnedRecords}
-                      onClick={() => setDialog({ type: "service" })}
-                    >
-                      New service
-                    </Button>
-                  }
-                >
-                  <DataTable
-                    rows={catalog.services}
-                    columns={[
-                      ["name", "Service"],
-                      ["maintainer_id", "Maintainer", MaintainerCell],
-                      ["health_status", "Health", StatusBadge],
-                      ["lifecycle_status", "Lifecycle", StatusBadge],
-                      ["source", "Source", SourceCell],
-                      ["_actions", "Actions", ServiceActionCell]
-                    ]}
-                  />
-                </DataPanel>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, xl: 5 }}>
-                <DataPanel
-                  title="Packages"
-                  actions={
-                    <Button
-                      leftSection={<IconPlus size={16} />}
-                      size="compact-sm"
-                      disabled={!canManageOwnedRecords}
-                      onClick={() => setDialog({ type: "package" })}
-                    >
-                      New package
-                    </Button>
-                  }
-                >
-                  <DataTable
-                    rows={catalog.packages}
-                    columns={[
-                      ["name", "Package"],
-                      ["maintainer_id", "Maintainer", MaintainerCell],
-                      ["version", "Version"],
-                      ["status", "Status", StatusBadge],
-                      ["repository_url", "Repo", LinkCell],
-                      ["_actions", "Actions", PackageActionCell]
-                    ]}
-                  />
-                </DataPanel>
-              </Grid.Col>
-            </Grid>
+
           </Stack>
         </>
       )}

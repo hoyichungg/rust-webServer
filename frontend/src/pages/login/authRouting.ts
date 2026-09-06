@@ -1,4 +1,5 @@
 import { safeMyWorkDetailQuery, safeMyWorkQuery } from "../work/myWorkRouting";
+import { inboxHash, inboxParams, parseInboxQuery } from "../records/inboxRouting";
 
 const DEFAULT_RETURN_TO = "/#dashboard";
 const TOP_LEVEL_ROUTES = new Set(["dashboard", "my-work", "connectors", "catalog", "audit"]);
@@ -43,6 +44,9 @@ export function safeReturnToFromHash(hash: string): string {
     const safeQuery = safeMyWorkQuery(query);
     return safeQuery ? `/#my-work?${safeQuery}` : "/#my-work";
   }
+  if (route === "inbox") {
+    return `/${inboxHash(parseInboxQuery(new URLSearchParams(query)))}`;
+  }
 
   if (TOP_LEVEL_ROUTES.has(route) && route !== "connectors") {
     return `/#${route}`;
@@ -70,6 +74,10 @@ export function safeReturnToFromHash(hash: string): string {
     positiveIntegerRouteId(route, "notifications/") ??
     positiveIntegerQueryId(route, query, "notifications");
   if (notificationId !== null) {
+    const params = new URLSearchParams(query);
+    if (params.get("from") === "inbox") {
+      return `/#notifications/${notificationId}?from=inbox&${inboxParams(parseInboxQuery(params))}`;
+    }
     return `/#notifications/${notificationId}`;
   }
 

@@ -6,6 +6,18 @@ snapshots, DevOps work cards, connector operations, notifications, CLI user
 management, local password and Microsoft Entra ID sign-in, session tokens,
 request validation, and integration tests for the main REST resources.
 
+For a code-grounded product assessment and practical workflows in Traditional
+Chinese, see [專案分析與實用化紀錄](docs/project-assessment.zh-TW.md).
+
+The **Inbox** navigation entry provides searchable, paginated notifications,
+including personal snoozed/dismissed messages and source-archived history.
+`GET /me/notifications` accepts `state` (`unread`, `read`, `snoozed`, `dismissed`,
+`all`, `archived`), `search`, `source`, `severity`, `page`, and `page_size`.
+The default is unread, page 1, 25 items; the maximum page size is 100. `all`
+includes only non-archived records. Personal actions do not write back to the
+source system. Restoring clears snooze/dismissal while preserving read state.
+The original `/notifications` response remains unchanged.
+
 ## Stack
 
 - Rust 1.85

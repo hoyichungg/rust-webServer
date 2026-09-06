@@ -138,6 +138,31 @@ fn test_connector_data_scopes_protect_records_and_operational_overviews() {
     let personal_notification = import_notification(&client, &admin.cookie, &personal_source);
     let team_notification = import_notification(&client, &admin.cookie, &team_source);
 
+    // Both inbox rows and totals must follow the same visibility rules as details.
+    for (cookie, visible_sources) in [
+        (
+            &admin.cookie,
+            vec![&global_source, &personal_source, &team_source],
+        ),
+        (
+            &personal_owner.cookie,
+            vec![&global_source, &personal_source],
+        ),
+        (&team_member.cookie, vec![&global_source, &team_source]),
+        (&outsider.cookie, vec![&global_source]),
+    ] {
+        for source in [&global_source, &personal_source, &team_source] {
+            let inbox = get_data(
+                &client,
+                cookie,
+                &format!("/me/notifications?state=all&source={source}"),
+            );
+            let expected = usize::from(visible_sources.contains(&source));
+            assert_eq!(inbox["total"].as_u64(), Some(expected as u64));
+            assert_eq!(inbox["items"].as_array().unwrap().len(), expected);
+        }
+    }
+
     assert_record_scope(&global_work, &global_connector, None, None);
     assert_record_scope(
         &personal_work,

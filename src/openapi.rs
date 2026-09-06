@@ -34,7 +34,7 @@ use crate::rocket_routes::dashboard::{
 use crate::rocket_routes::entra_auth::PublicAuthConfig;
 use crate::rocket_routes::health::{HealthResponse, ReadinessChecks, ReadinessResponse};
 use crate::rocket_routes::maintainers::MaintainerMemberRequest;
-use crate::rocket_routes::notifications::NotificationSnoozeRequest;
+use crate::rocket_routes::notifications::{InboxResponse, NotificationSnoozeRequest};
 use crate::rocket_routes::services::{
     ServiceHealthOverview, ServiceLinks, ServiceOverview, ServiceOwner,
 };
@@ -111,6 +111,7 @@ use crate::validation::FieldViolation;
         update_work_card_doc,
         delete_work_card_doc,
         list_notifications_doc,
+        inbox_doc,
         get_notification_doc,
         mark_notification_read_doc,
         mark_notification_unread_doc,
@@ -146,6 +147,7 @@ use crate::validation::FieldViolation;
         ApiResponse<MicrosoftOAuthCallbackResponse>,
         ApiResponse<Notification>,
         ApiResponse<NotificationView>,
+        ApiResponse<InboxResponse>,
         ApiResponse<Package>,
         ApiResponse<Service>,
         ApiResponse<ServiceOverview>,
@@ -949,6 +951,19 @@ fn delete_work_card_doc() {}
 
 #[utoipa::path(get, path = "/notifications", tag = "Catalog", operation_id = "listNotifications", security(("bearer_auth" = [])), responses((status = 200, description = "Actionable notification records for the current user. Read, dismissed, and actively snoozed records are excluded.", body = ApiResponse<Vec<NotificationView>>)))]
 fn list_notifications_doc() {}
+
+#[utoipa::path(get, path = "/me/notifications", tag = "Catalog", operation_id = "getInbox", security(("bearer_auth" = [])),
+    params(
+        ("state" = Option<String>, Query, description = "unread (default), read, snoozed, dismissed, all (current), or archived. Read/unread exclude dismissed and active snoozes."),
+        ("search" = Option<String>, Query, description = "Literal case-insensitive title/body search, maximum 200 characters."),
+        ("source" = Option<String>, Query, description = "Exact source name, maximum 64 characters."),
+        ("severity" = Option<String>, Query, description = "info, warning, or critical."),
+        ("page" = Option<i64>, Query, description = "One-based page, maximum 1000000."),
+        ("page_size" = Option<i64>, Query, description = "1–100, default 25.")
+    ),
+    responses((status = 200, description = "Scoped notification inbox with personal receipts; newest updated first, then id descending.", body = ApiResponse<InboxResponse>),
+        (status = 400, description = "Invalid filters or pagination.", body = ApiErrorResponse)))]
+fn inbox_doc() {}
 
 #[utoipa::path(get, path = "/notifications/{id}", tag = "Catalog", operation_id = "getNotification", security(("bearer_auth" = [])), params(("id" = i32, Path, description = "Notification id.")), responses((status = 200, description = "Notification record with effective state for the current user.", body = ApiResponse<NotificationView>), (status = 404, description = "Notification was not found or is outside the current user's scope.", body = ApiErrorResponse)))]
 fn get_notification_doc() {}

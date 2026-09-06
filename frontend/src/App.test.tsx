@@ -47,7 +47,11 @@ vi.mock("./pages/records/WorkCardDetailView", () => ({
 }));
 
 vi.mock("./pages/records/NotificationDetailView", () => ({
-  NotificationDetailView: () => <div>Notification page</div>
+  NotificationDetailView: ({ onBack }: { onBack: () => void }) => <div>Notification page<button onClick={onBack}>Back to inbox</button></div>
+}));
+
+vi.mock("./pages/records/InboxView", () => ({
+  InboxView: ({ searchParams }: { searchParams: URLSearchParams }) => <div>Inbox page {searchParams.toString()}</div>
 }));
 
 vi.mock("./pages/work/MyWorkView", () => ({
@@ -57,6 +61,23 @@ vi.mock("./pages/work/MyWorkView", () => ({
 }));
 
 describe("App cookie session lifecycle", () => {
+  it("restores a filtered inbox route", async () => {
+    window.history.replaceState(null, "", "/#inbox?state=snoozed&page=2");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response({ data: meResponse() }));
+    renderWithProviders(<App />);
+    expect(await screen.findByText("Inbox page state=snoozed&page=2")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Inbox" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("returns from notification details to the original inbox filters", async () => {
+    window.history.replaceState(null, "", "/#notifications/42?from=inbox&state=dismissed&source=erp&page=2");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response({ data: meResponse() }));
+    renderWithProviders(<App />);
+    expect(await screen.findByText("Notification page")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Inbox" })).toHaveAttribute("aria-current", "page");
+    await userEvent.click(screen.getByRole("button", { name: "Back to inbox" }));
+    expect(await screen.findByText("Inbox page state=dismissed&source=erp&page=2")).toBeVisible();
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();

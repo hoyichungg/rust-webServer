@@ -11,6 +11,8 @@ import {
 describe("Entra auth routing", () => {
   it.each([
     ["#catalog", "/#catalog"],
+    ["#inbox?state=dismissed&page=2&token=secret", "/#inbox?state=dismissed&page=2"],
+    ["#notifications/7?from=inbox&state=snoozed&page=3&token=secret", "/#notifications/7?from=inbox&state=snoozed&page=3"],
     ["#/audit", "/#audit"],
     [
       "#my-work?source=azure-devops&due=next_7_days&sort=source_updated_desc&page=2&token=secret",

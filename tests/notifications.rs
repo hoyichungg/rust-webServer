@@ -6,6 +6,146 @@ pub mod common;
 use common::CookieAuthRequest;
 
 #[test]
+fn inbox_filters_paginate_and_recover_personal_receipts() {
+    let client = Client::new();
+    let admin = common::create_admin_auth(&client);
+    let member = common::create_test_auth(&client, "member");
+    let other = common::create_test_auth(&client, "member");
+    let source = common::unique_name("inbox");
+    let mut records = Vec::new();
+    for index in 0..6 {
+        let response = client
+            .post(format!("{}/notifications", common::APP_HOST))
+            .cookie_auth(&admin.cookie)
+            .json(&json!({
+                "source": source, "title": format!("Inbox item {index}"),
+                "body": if index == 0 { "Literal 100%_done\\path" } else { "Ordinary body" },
+                "severity": if index == 0 { "critical" } else { "info" },
+                "is_read": index == 5
+            }))
+            .send()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+        records.push(response.json::<Value>().unwrap()["data"].clone());
+    }
+    let id = |index: usize| records[index]["id"].as_i64().unwrap();
+    // Set equal update times to exercise the id tie-breaker and simulate a
+    // connector archive, which deliberately cannot be set through public CRUD.
+    common::assert_safe_test_database();
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+        let mut db = AsyncPgConnection::establish(common::database_url()).await.unwrap();
+        diesel::sql_query("UPDATE notifications SET updated_at = '2026-09-06T00:00:00Z', archived_at = CASE WHEN id = $1 THEN now() ELSE NULL END WHERE source = $2")
+            .bind::<diesel::sql_types::Integer, _>(id(4) as i32)
+            .bind::<diesel::sql_types::Text, _>(&source)
+            .execute(&mut db).await.unwrap();
+    });
+    let inbox = |cookie: &str, state: &str, page: &str, search: &str| {
+        let response = client
+            .get(format!("{}/me/notifications", common::APP_HOST))
+            .cookie_auth(cookie)
+            .query(&[
+                ("source", source.as_str()),
+                ("state", state),
+                ("page", page),
+                ("page_size", "2"),
+                ("search", search),
+            ])
+            .send()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        response.json::<Value>().unwrap()["data"].clone()
+    };
+    let first = inbox(&member.cookie, "all", "1", "");
+    let second = inbox(&member.cookie, "all", "2", "");
+    let third = inbox(&member.cookie, "all", "3", "");
+    assert_eq!(first["total"], 5);
+    assert_eq!(first["page_size"], 2);
+    let ids: Vec<i64> = [&first, &second, &third]
+        .into_iter()
+        .flat_map(|page| page["items"].as_array().unwrap())
+        .map(|item| item["id"].as_i64().unwrap())
+        .collect();
+    assert_eq!(ids, vec![id(5), id(3), id(2), id(1), id(0)]);
+    assert_eq!(inbox(&member.cookie, "all", "4", "")["items"], json!([]));
+    assert_eq!(
+        inbox(&member.cookie, "archived", "1", "")["items"][0]["id"],
+        id(4)
+    );
+    assert_eq!(inbox(&member.cookie, "unread", "1", "")["total"], 4);
+    assert_eq!(
+        inbox(&member.cookie, "read", "1", "")["items"][0]["id"],
+        id(5)
+    );
+    assert_eq!(
+        inbox(&member.cookie, "all", "1", "%_DONE\\path")["total"],
+        1
+    );
+    assert_eq!(inbox(&member.cookie, "all", "1", "missing")["total"], 0);
+    post_action(&client, &member.cookie, id(0), "read");
+    post_action(&client, &member.cookie, id(1), "dismiss");
+    let response = client
+        .post(format!(
+            "{}/notifications/{}/snooze",
+            common::APP_HOST,
+            id(2)
+        ))
+        .cookie_auth(&member.cookie)
+        .json(&json!({"snoozed_until": Utc::now() + Duration::hours(1)}))
+        .send()
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(inbox(&member.cookie, "unread", "1", "")["total"], 1);
+    assert_eq!(inbox(&other.cookie, "unread", "1", "")["total"], 4);
+    assert_eq!(
+        inbox(&member.cookie, "dismissed", "1", "")["items"][0]["id"],
+        id(1)
+    );
+    assert_eq!(
+        inbox(&member.cookie, "snoozed", "1", "")["items"][0]["id"],
+        id(2)
+    );
+    assert_eq!(inbox(&other.cookie, "dismissed", "1", "")["total"], 0);
+    post_action(&client, &member.cookie, id(1), "restore");
+    post_action(&client, &member.cookie, id(2), "restore");
+    assert_eq!(inbox(&member.cookie, "unread", "1", "")["total"], 3);
+    for query in [
+        "state=bogus",
+        "page=0",
+        "page=-1",
+        "page_size=101",
+        "page_size=0",
+        "severity=bogus",
+        "page=1000001",
+    ] {
+        let response = client
+            .get(format!("{}/me/notifications?{query}", common::APP_HOST))
+            .cookie_auth(&member.cookie)
+            .send()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{query}");
+        assert_eq!(
+            response.json::<Value>().unwrap()["error"]["code"],
+            "validation_failed"
+        );
+    }
+    assert_eq!(
+        client
+            .get(format!("{}/me/notifications", common::APP_HOST))
+            .send()
+            .unwrap()
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    for record in records {
+        common::delete_test_notification(&client, record);
+    }
+    for user in [member, other, admin] {
+        common::delete_test_user(user.user_id);
+    }
+}
+
+#[test]
 fn test_notification_receipts_are_isolated_per_user() {
     let client = Client::new();
     let admin = common::create_admin_auth(&client);

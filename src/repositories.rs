@@ -2267,7 +2267,120 @@ impl NotificationReceiptRepository {
 
 pub struct NotificationRepository;
 
+#[derive(Default)]
+pub struct InboxFilters {
+    pub state: String,
+    pub search: Option<String>,
+    pub source: Option<String>,
+    pub severity: Option<String>,
+}
+
 impl NotificationRepository {
+    pub async fn inbox_for_access(
+        c: &mut AsyncPgConnection,
+        access: &RecordAccessScope,
+        filters: &InboxFilters,
+        page: i64,
+        page_size: i64,
+    ) -> QueryResult<(Vec<NotificationView>, i64)> {
+        let now = Utc::now();
+        let build_query = || {
+            let mut query = notifications::table
+                .left_join(
+                    notification_receipts::table.on(notification_receipts::notification_id
+                        .eq(notifications::id)
+                        .and(notification_receipts::user_id.eq(access.user_id))),
+                )
+                .into_boxed();
+            if !access.is_admin {
+                query = query.filter(
+                    notifications::owner_user_id
+                        .eq(Some(access.user_id))
+                        .or(notifications::maintainer_id.eq_any(&access.maintainer_ids))
+                        .or(notifications::owner_user_id
+                            .is_null()
+                            .and(notifications::maintainer_id.is_null())),
+                );
+            }
+            if filters.state == "archived" {
+                query = query.filter(notifications::archived_at.is_not_null());
+            } else {
+                query = query.filter(notifications::archived_at.is_null());
+            }
+            match filters.state.as_str() {
+                "unread" | "read" => {
+                    query = query
+                        .filter(notification_receipts::dismissed_at.is_null())
+                        .filter(
+                            notification_receipts::snoozed_until
+                                .is_null()
+                                .or(notification_receipts::snoozed_until.le(now)),
+                        );
+                    if filters.state == "unread" {
+                        query = query
+                            .filter(notifications::is_read.eq(false))
+                            .filter(notification_receipts::read_at.is_null());
+                    } else {
+                        query = query.filter(
+                            notifications::is_read
+                                .eq(true)
+                                .or(notification_receipts::read_at.is_not_null()),
+                        );
+                    }
+                }
+                "snoozed" => {
+                    query = query
+                        .filter(notification_receipts::dismissed_at.is_null())
+                        .filter(notification_receipts::snoozed_until.gt(now));
+                }
+                "dismissed" => {
+                    query = query.filter(notification_receipts::dismissed_at.is_not_null());
+                }
+                _ => {}
+            }
+            if let Some(source) = &filters.source {
+                query = query.filter(notifications::source.eq(source));
+            }
+            if let Some(severity) = &filters.severity {
+                query = query.filter(notifications::severity.eq(severity));
+            }
+            if let Some(search) = &filters.search {
+                // Treat user input as literal text, including SQL LIKE wildcards.
+                let pattern = format!(
+                    "%{}%",
+                    search
+                        .replace('\\', "\\\\")
+                        .replace('%', "\\%")
+                        .replace('_', "\\_")
+                );
+                query = query.filter(
+                    notifications::title
+                        .ilike(pattern.clone())
+                        .or(notifications::body.ilike(pattern)),
+                );
+            }
+            query
+        };
+        let total = build_query().count().get_result(c).await?;
+        let records = build_query()
+            .select((
+                notifications::all_columns,
+                notification_receipts::all_columns.nullable(),
+            ))
+            .order((notifications::updated_at.desc(), notifications::id.desc()))
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+            .load::<(Notification, Option<NotificationReceipt>)>(c)
+            .await?;
+        Ok((
+            records
+                .into_iter()
+                .map(|(record, receipt)| NotificationView::from_record(record, receipt))
+                .collect(),
+            total,
+        ))
+    }
+
     pub async fn find(c: &mut AsyncPgConnection, id: i32) -> QueryResult<Notification> {
         notifications::table.find(id).get_result(c).await
     }

@@ -1,7 +1,7 @@
 use crate::api::{created, ok, ApiError, ApiResult, CreatedApiResult};
 use crate::auth::{record_access_scope, require_admin, AuthenticatedUser};
 use crate::models::{NewNotification, Notification, NotificationView};
-use crate::repositories::{NotificationReceiptRepository, NotificationRepository};
+use crate::repositories::{InboxFilters, NotificationReceiptRepository, NotificationRepository};
 use crate::rocket_routes::audit_logs::record_audit_log;
 use crate::rocket_routes::DbConn;
 use crate::validation::{validate_request, FieldViolation, Validate};
@@ -12,6 +12,93 @@ use rocket::serde::Deserialize;
 use rocket_db_pools::Connection;
 use serde_json::json;
 use utoipa::ToSchema;
+
+#[derive(rocket::form::FromForm, Default)]
+pub struct InboxQuery {
+    pub state: Option<String>,
+    pub search: Option<String>,
+    pub source: Option<String>,
+    pub severity: Option<String>,
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+}
+
+impl Validate for InboxQuery {
+    fn validate(&self) -> Vec<FieldViolation> {
+        let mut errors = Vec::new();
+        for (field, value, choices) in [
+            (
+                "state",
+                self.state.as_deref(),
+                &["unread", "read", "snoozed", "dismissed", "all", "archived"][..],
+            ),
+            (
+                "severity",
+                self.severity.as_deref(),
+                &["info", "warning", "critical"][..],
+            ),
+        ] {
+            if value.is_some_and(|value| !choices.contains(&value)) {
+                errors.push(FieldViolation::new(
+                    field,
+                    format!("must be one of {}", choices.join(", ")),
+                ));
+            }
+        }
+        crate::validation::max_optional_len(&mut errors, "search", &self.search, 200);
+        crate::validation::max_optional_len(&mut errors, "source", &self.source, 64);
+        if self
+            .page
+            .is_some_and(|value| !(1..=1_000_000).contains(&value))
+        {
+            errors.push(FieldViolation::new("page", "must be from 1 to 1000000"));
+        }
+        if self
+            .page_size
+            .is_some_and(|value| !(1..=100).contains(&value))
+        {
+            errors.push(FieldViolation::new("page_size", "must be from 1 to 100"));
+        }
+        errors
+    }
+}
+
+#[derive(serde::Serialize, ToSchema)]
+pub struct InboxResponse {
+    pub items: Vec<NotificationView>,
+    pub total: i64,
+    pub page: i64,
+    pub page_size: i64,
+}
+
+#[rocket::get("/me/notifications?<query..>")]
+pub async fn get_inbox(
+    auth: AuthenticatedUser,
+    mut db: Connection<DbConn>,
+    query: InboxQuery,
+) -> ApiResult<InboxResponse> {
+    let query = validate_request(query)?;
+    let access = record_access_scope(&mut db, &auth).await?;
+    let page = query.page.unwrap_or(1);
+    let page_size = query.page_size.unwrap_or(25);
+    let clean =
+        |value: Option<String>| value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty());
+    let filters = InboxFilters {
+        state: query.state.unwrap_or_else(|| "unread".into()),
+        search: clean(query.search),
+        source: clean(query.source),
+        severity: query.severity,
+    };
+    let (items, total) =
+        NotificationRepository::inbox_for_access(&mut db, &access, &filters, page, page_size)
+            .await?;
+    ok(InboxResponse {
+        items,
+        total,
+        page,
+        page_size,
+    })
+}
 
 #[derive(Deserialize, ToSchema)]
 pub struct NotificationSnoozeRequest {

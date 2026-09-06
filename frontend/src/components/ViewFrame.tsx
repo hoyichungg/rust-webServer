@@ -1,4 +1,4 @@
-import { Alert, Box, Group, Stack, Text, Title } from "@mantine/core";
+import { Alert, Box, Button, Group, Stack, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 
 import { PageLoader } from "./LoadingState";
@@ -43,7 +43,12 @@ export function ViewFrame({
       {loading && (loadingFallback || <PageLoader />)}
       {error && (
         <Alert color="red" title="Request failed">
-          {error.message}
+          <Stack gap="sm">
+            <Text size="sm">{error.message}</Text>
+            <Button variant="light" color="red" size="sm" onClick={() => window.dispatchEvent(new CustomEvent("idp-refresh"))}>
+              Try again
+            </Button>
+          </Stack>
         </Alert>
       )}
       {!loading && !error && children}

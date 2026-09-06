@@ -95,6 +95,21 @@ body {
   min-width: 0;
 }
 
+.workbenchOptions > summary {
+  cursor: pointer;
+  color: var(--mantine-primary-color-light-color);
+  font-size: var(--mantine-font-size-sm);
+  padding-block: 8px;
+}
+
+.workbenchOptions[open] > summary {
+  margin-bottom: 12px;
+}
+
+.workbenchOptions .workbenchStats {
+  margin-bottom: 12px;
+}
+
 .viewToolbar {
   display: flex;
   align-items: center;

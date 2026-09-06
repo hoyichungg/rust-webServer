@@ -109,6 +109,7 @@ pub fn try_build(app_config: AppConfig) -> Result<Rocket<Build>, ConfigError> {
                 rocket_routes::work_cards::update_work_card,
                 rocket_routes::work_cards::delete_work_card,
                 rocket_routes::notifications::get_notifications,
+                rocket_routes::notifications::get_inbox,
                 rocket_routes::notifications::view_notification,
                 rocket_routes::notifications::mark_notification_read,
                 rocket_routes::notifications::mark_notification_unread,

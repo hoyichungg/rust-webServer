@@ -101,7 +101,12 @@ export function PortalShell({
 
       <AppShell.Navbar p="md" className="appNavbar">
         <Stack gap={6}>
-          {visibleNavigation.map((item) => (
+          {[
+            { label: "Daily workspace", items: visibleNavigation.filter((item) => !item.capability) },
+            { label: "Administration", items: visibleNavigation.filter((item) => item.capability) }
+          ].filter((section) => section.items.length > 0).map((section) => <Stack key={section.label} gap={6} mb="md">
+            <Text size="xs" c="dimmed" fw={700} tt="uppercase" px="sm">{section.label}</Text>
+          {section.items.map((item) => (
             <a
               key={item.id}
               href={`#${item.id}`}
@@ -113,6 +118,7 @@ export function PortalShell({
               <span>{item.label}</span>
             </a>
           ))}
+          </Stack>)}
         </Stack>
       </AppShell.Navbar>
 

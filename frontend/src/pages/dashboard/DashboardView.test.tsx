@@ -86,6 +86,7 @@ describe("DashboardView daily workbench", () => {
     expect(within(workbench).getByText("Identity API")).toBeInTheDocument();
     expect(within(workbench).getByText("Fix blocked deployment")).toBeInTheDocument();
 
+    await user.click(within(workbench).getByText("Filter and sort"));
     await user.click(within(workbench).getByRole("radio", { name: "Work" }));
     expect(within(workbench).getByText("Fix blocked deployment")).toBeInTheDocument();
     expect(within(workbench).queryByText("Identity API")).not.toBeInTheDocument();

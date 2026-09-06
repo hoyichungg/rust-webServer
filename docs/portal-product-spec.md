@@ -144,6 +144,16 @@ Presentation Layer principles:
 - Prioritize actionable and scannable information.
 - Keep the UI dense but clear for daily engineering and operations work.
 - Handle loading, error, refresh, and stale response states.
+- Keep the default home view focused on actionable items and today's meetings.
+  Put bulk supporting lists and duplicate metrics behind an explicit disclosure;
+  provide clear My Work, Inbox, and Catalog entry points. Summaries must offer
+  a way to reach additional records rather than silently hiding them.
+- Keep daily navigation separate from administrative navigation. Catalog
+  services and packages should precede team administration. Search over a
+  loaded list must be labeled as list-local, not as a server-wide search.
+- Load the complete Mantine stylesheet in its intended order. Importing the
+  UnstyledButton reset after Button rules removes important action affordances,
+  and manually enumerating styles risks missing newly used component styles.
 - The connector config editor must not allow redacted secrets to overwrite real
   stored secrets.
 
@@ -214,6 +224,8 @@ The project already has:
 - A first-class My Work view with assigned-to-me authorization, due/blocked
   attention sorting, project/type/source filters, stable pagination URLs, and
   detail-page return state.
+- A first-class Inbox with scoped search and pagination, personal read/snooze/
+  dismissal recovery, source archive inspection, and URL-preserved filters.
 - Explicit Azure DevOps assignee descriptor mappings to portal user IDs; the
   portal never guesses assignment from mutable display names or email strings.
 
@@ -221,7 +233,8 @@ Future improvements can include:
 
 - ERP-specific writeback, approvals, and richer private-message workflows.
 - More complete home page aggregation.
-- OpenAPI or API docs.
+- Broader OpenAPI examples and integration onboarding documentation (the
+  machine-readable `/openapi.json` endpoint already exists).
 - Deeper charts, alerting, and incident drill-down workflows.
 
 ## Definition Of Done

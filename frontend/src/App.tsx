@@ -19,6 +19,8 @@ import {
 } from "./pages/login/authRouting";
 import { LoginScreen } from "./pages/login/LoginScreen";
 import { NotificationDetailView } from "./pages/records/NotificationDetailView";
+import { InboxView } from "./pages/records/InboxView";
+import { inboxReturnHash } from "./pages/records/inboxRouting";
 import { WorkCardDetailView } from "./pages/records/WorkCardDetailView";
 import { ServiceOverviewView } from "./pages/services/ServiceOverviewView";
 import { MyWorkView } from "./pages/work/MyWorkView";
@@ -39,12 +41,13 @@ import type {
   RevokeAllSessionsResponse
 } from "./types/api";
 
-const TOP_LEVEL_VIEWS = new Set(["dashboard", "my-work", "connectors", "catalog", "audit"]);
+const TOP_LEVEL_VIEWS = new Set(["dashboard", "my-work", "inbox", "connectors", "catalog", "audit"]);
 const UNCONFIRMED_ENTRA_SIGN_IN = "Microsoft sign-in could not be confirmed. Try again.";
 const UNCONFIRMED_PASSWORD_SIGN_IN = "Password sign-in could not be confirmed. Try again.";
 type AppView =
   | "dashboard"
   | "my-work"
+  | "inbox"
   | "connectors"
   | "catalog"
   | "audit"
@@ -201,6 +204,12 @@ export default function App() {
   const [selectedNotificationId, setSelectedNotificationId] = useState<ApiId | null>(() =>
     initialRoute.view === "notification-detail" ? initialRoute.recordId : null
   );
+  const [inboxSearchParams, setInboxSearchParams] = useState(() =>
+    new URLSearchParams(initialRoute.view === "inbox" ? initialRoute.params : undefined)
+  );
+  const [notificationBackHash, setNotificationBackHash] = useState(() =>
+    inboxReturnHash(initialRoute.params)
+  );
   const [connectorDrillTarget, setConnectorDrillTarget] =
     useState<ConnectorDrillTarget | null>(() => {
       return initialRoute.view === "connectors" ? connectorTargetFromParams(initialRoute.params) : null;
@@ -259,6 +268,8 @@ export default function App() {
         new URLSearchParams(route.view === "my-work" ? route.params : undefined)
       );
       setSelectedNotificationId(route.view === "notification-detail" ? route.recordId : null);
+      setInboxSearchParams(new URLSearchParams(route.view === "inbox" ? route.params : undefined));
+      setNotificationBackHash(inboxReturnHash(route.params));
       setConnectorDrillTarget(
         route.view === "connectors" ? connectorTargetFromParams(route.params) : null
       );
@@ -627,7 +638,7 @@ export default function App() {
     }
   }
 
-  function openNotificationDetail(notificationId: string | number) {
+  function openNotificationDetail(notificationId: string | number, detailHash?: string) {
     const id = Number(notificationId);
     if (!Number.isInteger(id) || id <= 0) {
       return;
@@ -639,7 +650,8 @@ export default function App() {
     setConnectorDrillTarget(null);
     setView("notification-detail");
 
-    const nextHash = `#notifications/${id}`;
+    const nextHash = detailHash || `#notifications/${id}`;
+    setNotificationBackHash(inboxReturnHash(new URLSearchParams(nextHash.split("?", 2)[1])));
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
     }
@@ -693,8 +705,8 @@ export default function App() {
     <PortalShell
       user={user}
       view={
-        view === "service-overview" ||
-        view === "notification-detail"
+        view === "notification-detail" ? (notificationBackHash.startsWith("#inbox") ? "inbox" : "dashboard") :
+        view === "service-overview"
           ? "dashboard"
           : view === "work-card-detail"
             ? selectedWorkCardBackHash.startsWith("#my-work")
@@ -729,6 +741,12 @@ export default function App() {
           }
         />
       )}
+      {view === "inbox" && <InboxView
+        client={client}
+        searchParams={inboxSearchParams}
+        onNavigate={(hash) => { window.location.hash = hash; }}
+        onOpenNotification={openNotificationDetail}
+      />}
       {view === "service-overview" && selectedServiceId && (
         <ServiceOverviewView
           client={client}
@@ -752,7 +770,7 @@ export default function App() {
         <NotificationDetailView
           client={client}
           notificationId={selectedNotificationId}
-          onBack={() => handleViewChange("dashboard")}
+          onBack={() => { window.location.hash = notificationBackHash; }}
           onOpenConnector={openConnectorDrill}
         />
       )}

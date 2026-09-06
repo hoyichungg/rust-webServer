@@ -1,5 +1,6 @@
 import {
   Alert,
+  Accordion,
   Box,
   Button,
   Grid,
@@ -119,31 +120,17 @@ export function DashboardView({
       loading={data.loading && !overview}
       loadingFallback={<DashboardSkeleton />}
       error={data.error}
+      actions={<Group gap="xs">
+        <Button component="a" href="#my-work">My Work</Button>
+        <Button component="a" href="#inbox" variant="light">Inbox</Button>
+        <Button component="a" href="#catalog" variant="default">Service catalog</Button>
+      </Group>}
     >
       {overview && (
         <Stack gap="lg">
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: canManageConnectors ? 6 : 5 }}>
-            <Metric label="My services" value={overview.summary.services} />
-            <Metric
-              label="Meetings"
-              value={todayCalendarEvents(overview.today_calendar_events).length}
-            />
-            <Metric
-              label="Today first"
-              value={attentionCount(overview, canManageConnectors)}
-            />
-            <Metric label="Open work" value={overview.summary.open_work_cards} />
-            <Metric label="Messages" value={overview.summary.unread_notifications} />
-            {canManageConnectors && (
-              <Metric label="Failed runs" value={overview.summary.failed_connector_runs} />
-            )}
-          </SimpleGrid>
+
 
           <OperationsWarning operations={overview.operations} />
-
-          <DataPanel title="Today's meetings">
-            <CalendarEventList events={overview.today_calendar_events} />
-          </DataPanel>
 
           <Grid>
             <Grid.Col span={{ base: 12, lg: 7 }}>
@@ -160,15 +147,15 @@ export function DashboardView({
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, lg: 5 }}>
-              <DataPanel title="Health trend">
-                <HealthTrendPanel history={overview.health_history} onOpenService={onOpenService} />
+              <DataPanel title="Today's meetings">
+                <CalendarEventList events={overview.today_calendar_events} />
               </DataPanel>
             </Grid.Col>
           </Grid>
 
           <Grid>
             <Grid.Col span={{ base: 12, lg: 5 }}>
-              <DataPanel title="Messages">
+              <DataPanel title="Messages" actions={<Button component="a" href="#inbox" size="compact-sm" variant="subtle">Open inbox</Button>}>
                 <MessageList
                   notifications={overview.unread_notifications}
                   onOpenNotification={onOpenNotification}
@@ -180,33 +167,35 @@ export function DashboardView({
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, lg: 7 }}>
-              <DataPanel title="Service health">
-                <DataTable
-                  rows={overview.services}
-                  columns={[
-                    ["name", "Service"],
-                    ["health_status", "Health", StatusBadge],
-                    ["lifecycle_status", "Lifecycle", StatusBadge],
-                    [
-                      "id",
-                      "Open",
-                      ({ row }) => (
-                        <Button
-                          size="compact-sm"
-                          variant="subtle"
-                          rightSection={<IconArrowRight size={14} />}
-                          onClick={() => onOpenService(row.id)}
-                        >
-                          Overview
-                        </Button>
-                      )
-                    ]
-                  ]}
-                />
+              <DataPanel title="Health trend">
+                <HealthTrendPanel history={overview.health_history} onOpenService={onOpenService} />
               </DataPanel>
             </Grid.Col>
           </Grid>
 
+          <Accordion variant="separated">
+            <Accordion.Item value="details">
+              <Accordion.Control>
+                <Text fw={600}>Services, work and sync details</Text>
+                <Text size="sm" c="dimmed">Expand to browse the supporting lists and recent runs</Text>
+              </Accordion.Control>
+              <Accordion.Panel><Stack gap="lg">
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: canManageConnectors ? 6 : 5 }}>
+            <Metric label="My services" value={overview.summary.services} />
+            <Metric
+              label="Meetings"
+              value={todayCalendarEvents(overview.today_calendar_events).length}
+            />
+            <Metric
+              label="Today first"
+              value={attentionCount(overview, canManageConnectors)}
+            />
+            <Metric label="Open work" value={overview.summary.open_work_cards} />
+            <Metric label="Messages" value={overview.summary.unread_notifications} />
+            {canManageConnectors && (
+              <Metric label="Failed runs" value={overview.summary.failed_connector_runs} />
+            )}
+          </SimpleGrid>
           <Grid>
             <Grid.Col span={12}>
               <DataPanel title="Open work">
@@ -274,6 +263,9 @@ export function DashboardView({
               </DataPanel>
             </Grid.Col>
           </Grid>
+              </Stack></Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
         </Stack>
       )}
     </ViewFrame>
@@ -410,6 +402,7 @@ function DailyWorkbench({
   onOpenNotification: (notificationId: string | number) => void;
 }) {
   const [kindFilter, setKindFilter] = useState<WorkbenchFilter>("all");
+  const [showAllItems, setShowAllItems] = useState(false);
   const [sortMode, setSortMode] = useState<WorkbenchSort>("impact");
   const [query, setQuery] = useState("");
   const allItems = useMemo(
@@ -439,6 +432,8 @@ function DailyWorkbench({
   return (
     <Box component="section" aria-label="Daily workbench" className="workbenchSurface">
       <Stack gap="md">
+        <details className="workbenchOptions">
+          <summary>Filter and sort{kindFilter !== "all" || query ? " · Filters active" : ""}</summary>
         <SimpleGrid cols={{ base: 2, sm: 4 }} className="workbenchStats">
           <WorkbenchStat label="Critical" value={summary.critical} tone="critical" />
           <WorkbenchStat label="Work" value={summary.work} tone="work" />
@@ -475,11 +470,12 @@ function DailyWorkbench({
           />
         </Group>
 
+        </details>
         <Group justify="space-between" gap="sm" className="workbenchResultMeta">
           <Group gap={6} wrap="nowrap">
             <IconFilter size={15} />
             <Text size="sm" c="dimmed">
-              {visibleItems.length} of {allItems.length}
+              Showing {showAllItems ? visibleItems.length : Math.min(visibleItems.length, 6)} of {visibleItems.length} matches
             </Text>
           </Group>
           {query && (
@@ -491,7 +487,7 @@ function DailyWorkbench({
 
         {visibleItems.length > 0 ? (
           <Stack gap={0} className="workbenchList">
-            {visibleItems.slice(0, 12).map((item) => (
+            {visibleItems.slice(0, showAllItems ? visibleItems.length : 6).map((item) => (
               <Group
                 key={item.key}
                 data-testid="workbench-row"
@@ -548,6 +544,9 @@ function DailyWorkbench({
         ) : (
           <EmptyText>No matching workbench items</EmptyText>
         )}
+        {visibleItems.length > 6 && <Button variant="subtle" size="sm" onClick={() => setShowAllItems(!showAllItems)}>
+          {showAllItems ? "Show fewer" : `Show all ${visibleItems.length} items`}
+        </Button>}
       </Stack>
     </Box>
   );
@@ -742,12 +741,13 @@ function MessageList({
 
   return (
     <Stack gap={0} className="messageList">
+      {notifications.length > 5 && <Text size="xs" c="dimmed" mb="sm">Latest 5 messages · Open inbox to see all messages</Text>}
       {actionError && (
         <Alert color="red" title="Notification action failed" mb="sm">
           {actionError.message}
         </Alert>
       )}
-      {notifications.map((notification) => (
+      {notifications.slice(0, 5).map((notification) => (
         <Group
           key={notification.id}
           justify="space-between"
